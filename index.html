@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menú QR - Delicias</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1 class="logo">🍽️ Menú Digital</h1>
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        <nav class="nav" id="mainNav">
+            <a href="#home" class="nav-link active" data-route="home">
+                <i class="fas fa-home"></i> Inicio
+            </a>
+            <a href="#bebidas" class="nav-link" data-route="bebidas">
+                <i class="fas fa-glass-cheers"></i> Bebidas
+            </a>
+            <a href="#comidas" class="nav-link" data-route="comidas">
+                <i class="fas fa-utensils"></i> Comidas
+            </a>
+            <a href="#confituras" class="nav-link" data-route="confituras">
+                <i class="fas fa-cookie"></i> Confituras
+            </a>
+            <a href="#postres" class="nav-link" data-route="postres">
+                <i class="fas fa-birthday-cake"></i> Postres
+            </a>
+        </nav>
+    </header>
+
+    <main class="main-content" id="app">
+        <!-- El contenido se carga dinámicamente según la ruta -->
+    </main>
+
+    <footer class="footer">
+        <p>© 2024 Menú Digital - Todos los derechos reservados</p>
+        <div id="footerAdminLinks">
+            <a href="#admin" class="admin-link" id="adminPanelLink">🔧 Panel de Admin</a>
+        </div>
+    </footer>
+
+    <!-- Modal de Login Admin -->
+    <div id="adminLoginModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeLoginModal">&times;</span>
+            <h2>🔐 Acceso Admin</h2>
+            <form id="adminLoginForm">
+                <div class="form-group">
+                    <label for="adminUsername">Usuario:</label>
+                    <input type="text" id="adminUsername" required placeholder="Ingresa el usuario">
+                </div>
+                <div class="form-group">
+                    <label for="adminPassword">Contraseña:</label>
+                    <input type="password" id="adminPassword" required placeholder="Ingresa la contraseña">
+                </div>
+                <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+                <p id="loginError" class="error-message"></p>
+            </form>
+            <p class="login-hint">Credenciales: admin / admin123</p>
+        </div>
+    </div>
+
+    <!-- Modal para Editar/Agregar Producto -->
+    <div id="productModal" class="modal">
+        <div class="modal-content modal-large">
+            <span class="close-modal" id="closeProductModal">&times;</span>
+            <h2 id="productModalTitle">Agregar Producto</h2>
+            <form id="productForm">
+                <input type="hidden" id="productId">
+                <input type="hidden" id="productCategory">
+                <div class="form-group">
+                    <label for="productName">Nombre del Producto:</label>
+                    <input type="text" id="productName" required placeholder="Ej: Hamburguesa">
+                </div>
+                <div class="form-group">
+                    <label for="productDescription">Descripción:</label>
+                    <textarea id="productDescription" required placeholder="Descripción del producto" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="productPrice">Precio ($):</label>
+                    <input type="number" id="productPrice" required step="0.01" min="0" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label for="productImage">URL de la Imagen:</label>
+                    <input type="url" id="productImage" placeholder="https://ejemplo.com/imagen.jpg">
+                    <small>Puedes usar imágenes de <a href="https://unsplash.com" target="_blank">Unsplash</a></small>
+                </div>
+                <div class="form-group">
+                    <label>O subir imagen desde tu computadora:</label>
+                    <input type="file" id="productImageFile" accept="image/*">
+                    <small>Formatos permitidos: JPG, PNG, GIF, WebP</small>
+                </div>
+                <div class="form-group">
+                    <label for="productBadge">Etiqueta (opcional):</label>
+                    <input type="text" id="productBadge" placeholder="Ej: Popular, Nuevo, Especial">
+                </div>
+                <button type="submit" class="btn btn-primary">Guardar Producto</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Datos iniciales del menú (se usan si no hay datos en LocalStorage)
+        const defaultMenuData = {
+            home: {
+                title: "Bienvenido a Nuestro Menú",
+                subtitle: "Explora nuestras deliciosas opciones",
+                type: "home"
+            },
+            bebidas: {
+                title: "Bebidas",
+                subtitle: "Refresca tu día con nuestras bebidas",
+                type: "category",
+                subcategories: [
+                    { id: "refrescos", name: "Refrescos", icon: "fa-glass-water" },
+                    { id: "jugos", name: "Jugos", icon: "fa-lemon" },
+                    { id: "cafes", name: "Cafés", icon: "fa-mug-hot" },
+                    { id: "cocteles", name: "Cócteles", icon: "fa-cocktail" },
+                    { id: "smoothies", name: "Smoothies", icon: "fa-blender" }
+                ],
+                items: []
+            },
+            comidas: {
+                title: "Comidas",
+                subtitle: "Deliciosas opciones para satisfacer tu hambre",
+                type: "items",
+                items: [
+                    { id: 1, name: "Hamburguesa Clásica", description: "Jugosa hamburguesa con queso cheddar, lechuga, tomate y nuestra salsa especial", price: 12.99, image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400", badge: "Popular" },
+                    { id: 2, name: "Pasta Carbonara", description: "Spaghetti con salsa cremosa de huevo, panceta y queso parmesan", price: 14.50, image: "https://images.unsplash.com/photo-1612874742237-6526221588e3?w=400" },
+                    { id: 3, name: "Ensalada César", description: "Lechuga romana, crutones, pollo a la parrilla y aderezo César", price: 11.00, image: "https://images.unsplash.com/photo-1546793665-c74683f339c1?w=400" },
+                    { id: 4, name: "Tacos al Pastor", description: "Tres tacos con carne marinada, piña, cebolla y cilantro", price: 10.50, image: "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=400", badge: "Especial" },
+                    { id: 5, name: "Pizza Margherita", description: "Pizza con salsa de tomate, mozzarella fresco y albahaca", price: 13.00, image: "https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=400" },
+                    { id: 6, name: "Sándwich Club", description: "Triple capa de pan toasted con pollo, tocino, lechuga y tomate", price: 11.50, image: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400" }
+                ]
+            },
+            confituras: {
+                title: "Confituras",
+                subtitle: "Dulces tentaciones para acompañar tu día",
+                type: "items",
+                items: [
+                    { id: 1, name: "Galletas de Chocolate", description: "Crujientes galletas con trozos de chocolate negro", price: 4.50, image: "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=400" },
+                    { id: 2, name: "Brownie de Nuez", description: "Intenso brownie de chocolate con nueces caramelizadas", price: 5.00, image: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=400", badge: "Favorito" },
+                    { id: 3, name: "Donas Glaseadas", description: "Donas esponjosas con glaseado de vainilla y chocolate", price: 3.50, image: "https://images.unsplash.com/photo-1551024601-bec78aea704b?w=400" },
+                    { id: 4, name: "Churros con Chocolate", description: "Churros recién hechos servidos con chocolate caliente", price: 6.00, image: "https://images.unsplash.com/photo-1624371414361-e670edf4898e?w=400" },
+                    { id: 5, name: "Alfajores", description: "Galletas de maicena con dulce de leche y coco rallado", price: 4.00, image: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400" }
+                ]
+            },
+            postres: {
+                title: "Postres",
+                subtitle: "El final perfecto para tu comida",
+                type: "items",
+                items: [
+                    { id: 1, name: "Flan Napolitano", description: "Flan cremoso con caramelo y crema batida", price: 6.50, image: "https://images.unsplash.com/photo-1470124182917-cc6e71b22ecc?w=400", badge: "Clásico" },
+                    { id: 2, name: "Cheesecake de Fresa", description: "Tarta de queso con cobertura de fresas naturales", price: 7.50, image: "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=400" },
+                    { id: 3, name: "Tres Leches", description: "Bizuelo esponjoso bañado en tres leches con meringue", price: 7.00, image: "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400", badge: "Especial" },
+                    { id: 4, name: "Gelatina de Mosaico", description: "Colorida gelatina con trozos de frutas", price: 4.50, image: "https://images.unsplash.com/photo-1488900128323-21503983a07e?w=400" },
+                    { id: 5, name: "Volcán de Chocolate", description: "Pastel de chocolate con centro líquido de caramelo", price: 8.00, image: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=400", badge: "Popular" }
+                ]
+            },
+            refrescos: {
+                title: "Refrescos", subtitle: "Bebidas frías y refrescantes", type: "items", parent: "bebidas",
+                items: [
+                    { id: 1, name: "Coca-Cola", description: "Refresco clásico de cola", price: 2.50, image: "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=400" },
+                    { id: 2, name: "Sprite", description: "Refresco de limón", price: 2.50, image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400" },
+                    { id: 3, name: "Fanta", description: "Refresco de naranja", price: 2.50, image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400" },
+                    { id: 4, name: "Agua Mineral", description: "Agua mineral con gas o sin gas", price: 1.50, image: "https://images.unsplash.com/photo-1523362628745-0c100150b504?w=400" }
+                ]
+            },
+            jugos: {
+                title: "Jugos", subtitle: "Jugos naturales frescos", type: "items", parent: "bebidas",
+                items: [
+                    { id: 1, name: "Jugo de Naranja", description: "Jugo natural de naranja recien exprimido", price: 4.00, image: "https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400" },
+                    { id: 2, name: "Jugo de Mango", description: "Jugo natural de mango con trozos de fruta", price: 4.50, image: "https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=400" },
+                    { id: 3, name: "Jugo Verde", description: "Mezcla de apio, pepino y manzana verde", price: 5.00, image: "https://images.unsplash.com/photo-1610970881699-44a5587cabec?w=400", badge: "Saludable" },
+                    { id: 4, name: "Batido de Fresa", description: "Batido de fresas con leche", price: 5.50, image: "https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=400" }
+                ]
+            },
+            cafes: {
+                title: "Cafés", subtitle: "Variedad de bebidas de café", type: "items", parent: "bebidas",
+                items: [
+                    { id: 1, name: "Café Espresso", description: "Café negro concentrado", price: 2.50, image: "https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?w=400" },
+                    { id: 2, name: "Café Latte", description: "Café con leche vaporizada", price: 4.00, image: "https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?w=400" },
+                    { id: 3, name: "Cappuccino", description: "Café con leche espumosa y canela", price: 4.50, image: "https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400" },
+                    { id: 4, name: "Mocha", description: "Café con chocolate y leche", price: 5.00, image: "https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?w=400" },
+                    { id: 5, name: "Café Americano", description: "Café expresso con agua caliente", price: 3.00, image: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400" }
+                ]
+            },
+            cocteles: {
+                title: "Cócteles", subtitle: "Deliciosos cócteles y bebidas mixtas", type: "items", parent: "bebidas",
+                items: [
+                    { id: 1, name: "Margarita", description: "Tequila, licor de naranja y limón", price: 8.00, image: "https://images.unsplash.com/photo-1556855810-ac404aa91e85?w=400", badge: "Popular" },
+                    { id: 2, name: "Piña Colada", description: "Ron, crema de coco y jugo de piña", price: 7.50, image: "https://images.unsplash.com/photo-1587223962930-cb7f31384c19?w=400" },
+                    { id: 3, name: "Mojito", description: "Ron, menta, limón y soda", price: 7.00, image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=400" },
+                    { id: 4, name: "San Francisco", description: "Sin alcohol - Mezcla de jugos de frutas", price: 5.00, image: "https://images.unsplash.com/photo-1536935338788-846bb9981813?w=400", badge: "Sin Alcohol" }
+                ]
+            },
+            smoothies: {
+                title: "Smoothies", subtitle: "Batidos saludables y cremosos", type: "items", parent: "bebidas",
+                items: [
+                    { id: 1, name: "Smoothie de Plátano", description: "Plátano, leche y miel", price: 5.50, image: "https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=400" },
+                    { id: 2, name: "Smoothie de Fruits", description: "Mezcla de fresa, mango y piña", price: 6.00, image: "https://images.unsplash.com/photo-1505252585461-04db1eb84625?w=400" },
+                    { id: 3, name: "Green Smoothie", description: "Espinacas, plátano y leche de almendra", price: 6.50, image: "https://images.unsplash.com/photo-1610970881699-44a5587cabec?w=400", badge: "Saludable" }
+                ]
+            }
+        };
+
+        // Cargar datos desde LocalStorage o usar datos por defecto
+        let menuData = JSON.parse(localStorage.getItem('menuData')) || JSON.parse(JSON.stringify(defaultMenuData));
+
+        // Guardar datos en LocalStorage
+        function saveMenuData() {
+            localStorage.setItem('menuData', JSON.stringify(menuData));
+        }
+
+        // Credenciales de admin
+        const ADMIN_CREDENTIALS = {
+            username: 'admin',
+            password: 'admin123'
+        };
+
+        let isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+
+        // Router
+        class Router {
+            constructor(routes) {
+                this.routes = routes;
+                this.init();
+            }
+
+            init() {
+                window.addEventListener('hashchange', () => this.handleRoute());
+                window.addEventListener('load', () => this.handleRoute());
+            }
+
+            handleRoute() {
+                const hash = window.location.hash.slice(1) || 'home';
+                
+                // Verificar si es la ruta de admin
+                if (hash === 'admin') {
+                    this.renderAdminPanel();
+                    return;
+                }
+                
+                const route = this.routes[hash] || this.routes['home'];
+                this.render(route, hash);
+            }
+
+            render(route, hash) {
+                const app = document.getElementById('app');
+                let html = '';
+
+                if (route.type === 'home') {
+                    html = this.renderHome(route);
+                } else if (route.type === 'category') {
+                    html = this.renderCategory(route, hash);
+                } else if (route.type === 'items') {
+                    html = this.renderItems(route);
+                }
+
+                app.innerHTML = html;
+                this.updateNav(hash);
+                this.setupEventListeners();
+            }
+
+            renderHome(route) {
+                return `
+                    <section class="hero">
+                        <div class="hero-content">
+                            <h2>${route.title}</h2>
+                            <p>${route.subtitle}</p>
+                            <div class="hero-buttons">
+                                <a href="#bebidas" class="btn btn-primary">Ver Bebidas</a>
+                                <a href="#comidas" class="btn btn-secondary">Ver Comidas</a>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="categories-preview">
+                        <h3>Nuestras Categorías</h3>
+                        <div class="categories-grid">
+                            <a href="#bebidas" class="category-card">
+                                <i class="fas fa-glass-cheers"></i>
+                                <span>Bebidas</span>
+                            </a>
+                            <a href="#comidas" class="category-card">
+                                <i class="fas fa-utensils"></i>
+                                <span>Comidas</span>
+                            </a>
+                            <a href="#confituras" class="category-card">
+                                <i class="fas fa-cookie"></i>
+                                <span>Confituras</span>
+                            </a>
+                            <a href="#postres" class="category-card">
+                                <i class="fas fa-birthday-cake"></i>
+                                <span>Postres</span>
+                            </a>
+                        </div>
+                    </section>
+                    <section class="featured">
+                        <h3>Destacados del Chef</h3>
+                        <div class="featured-grid">
+                            <div class="featured-item">
+                                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400" alt="Hamburguesa">
+                                <div class="featured-info">
+                                    <h4>Hamburguesa Clásica</h4>
+                                    <p>$12.99</p>
+                                </div>
+                            </div>
+                            <div class="featured-item">
+                                <img src="https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=400" alt="Brownie">
+                                <div class="featured-info">
+                                    <h4>Brownie de Nuez</h4>
+                                    <p>$5.00</p>
+                                </div>
+                            </div>
+                            <div class="featured-item">
+                                <img src="https://images.unsplash.com/photo-1556855810-ac404aa91e85?w=400" alt="Margarita">
+                                <div class="featured-info">
+                                    <h4>Margarita</h4>
+                                    <p>$8.00</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                `;
+            }
+
+            renderCategory(route, hash) {
+                const backLink = route.parent ? `#${route.parent}` : '#home';
+                const backText = route.parent ? 'Volver a Bebidas' : 'Volver al Inicio';
+                
+                let html = `
+                    <div class="category-header">
+                        <a href="${backLink}" class="back-link">
+                            <i class="fas fa-arrow-left"></i> ${backText}
+                        </a>
+                        <h2>${route.title}</h2>
+                        <p class="subtitle">${route.subtitle}</p>
+                        ${isAdminLoggedIn ? `<button class="btn btn-primary btn-admin-action" onclick="openAddProductModal('${hash}')">
+                            <i class="fas fa-plus"></i> Agregar Producto
+                        </button>` : ''}
+                    </div>
+                `;
+
+                if (route.subcategories) {
+                    html += `
+                        <div class="subcategories-grid">
+                            ${route.subcategories.map(sub => `
+                                <a href="#${sub.id}" class="subcategory-card">
+                                    <i class="fas ${sub.icon}"></i>
+                                    <span>${sub.name}</span>
+                                </a>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                if (route.items && route.items.length > 0) {
+                    html += this.renderItemsGrid(route.items, hash);
+                }
+
+                return html;
+            }
+
+            renderItems(route, hash) {
+                const backLink = route.parent ? `#${route.parent}` : '#home';
+                const backText = route.parent ? 'Volver a Bebidas' : 
+                                 route.title === 'Comidas' ? 'Volver al Inicio' :
+                                 route.title === 'Confituras' ? 'Volver al Inicio' :
+                                 route.title === 'Postres' ? 'Volver al Inicio' : 'Volver';
+
+                // Determinar la categoría para agregar productos
+                let categoryKey = 'comidas';
+                if (route.title === 'Confituras') categoryKey = 'confituras';
+                else if (route.title === 'Postres') categoryKey = 'postres';
+                else if (route.parent === 'bebidas') categoryKey = route.title.toLowerCase();
+
+                return `
+                    <div class="category-header">
+                        <a href="${backLink}" class="back-link">
+                            <i class="fas fa-arrow-left"></i> ${backText}
+                        </a>
+                        <h2>${route.title}</h2>
+                        <p class="subtitle">${route.subtitle}</p>
+                        ${isAdminLoggedIn ? `<button class="btn btn-primary btn-admin-action" onclick="openAddProductModal('${categoryKey}')">
+                            <i class="fas fa-plus"></i> Agregar Producto
+                        </button>` : ''}
+                    </div>
+                    ${this.renderItemsGrid(route.items, categoryKey)}
+                `;
+            }
+
+            renderItemsGrid(items, categoryKey) {
+                return `
+                    <div class="items-grid">
+                        ${items.map(item => `
+                            <div class="item-card">
+                                ${item.badge ? `<span class="item-badge">${item.badge}</span>` : ''}
+                                ${isAdminLoggedIn ? `
+                                    <div class="admin-item-actions">
+                                        <button class="btn-edit" onclick="editProduct('${categoryKey}', ${item.id})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-delete" onclick="deleteProduct('${categoryKey}', ${item.id})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                ` : ''}
+                                <div class="item-image">
+                                    <img src="${item.image}" alt="${item.name}" loading="lazy">
+                                </div>
+                                <div class="item-content">
+                                    <h3 class="item-name">${item.name}</h3>
+                                    <p class="item-description">${item.description}</p>
+                                    <div class="item-footer">
+                                        <span class="item-price">$${item.price.toFixed(2)}</span>
+                                        <button class="btn-add">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            // Renderizar Panel de Admin
+            renderAdminPanel() {
+                const app = document.getElementById('app');
+                
+                if (!isAdminLoggedIn) {
+                    // Mostrar mensaje de acceso denegado
+                    app.innerHTML = `
+                        <div class="admin-panel">
+                            <h2>🔧 Panel de Administración</h2>
+                            <p>Debes iniciar sesión para acceder al panel de administración.</p>
+                            <button class="btn btn-primary" onclick="showLoginModal()">
+                                <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+                            </button>
+                            <a href="#home" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Volver al Menú
+                            </a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Mostrar panel de admin
+                let html = `
+                    <div class="admin-panel">
+                        <div class="admin-header">
+                            <h2>🔧 Panel de Administración</h2>
+                            <button class="btn btn-secondary" onclick="logoutAdmin()">
+                                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                            </button>
+                        </div>
+                        <div class="admin-actions">
+                            <button class="btn btn-primary" onclick="resetMenuData()">
+                                <i class="fas fa-undo"></i> Restablecer Datos Originales
+                            </button>
+                        </div>
+                        <div class="admin-sections">
+                            <h3>Gestionar Productos por Categoría</h3>
+                `;
+
+                // Listar categorías con productos
+                const categories = ['comidas', 'confituras', 'postres', 'refrescos', 'jugos', 'cafes', 'cocteles', 'smoothies'];
+                const categoryNames = {
+                    'comidas': 'Comidas',
+                    'confituras': 'Confituras',
+                    'postres': 'Postres',
+                    'refrescos': 'Refrescos',
+                    'jugos': 'Jugos',
+                    'cafes': 'Cafés',
+                    'cocteles': 'Cócteles',
+                    'smoothies': 'Smoothies'
+                };
+
+                categories.forEach(cat => {
+                    const items = menuData[cat]?.items || [];
+                    html += `
+                        <div class="admin-category">
+                            <h4>${categoryNames[cat]} (${items.length} productos)</h4>
+                            <div class="admin-category-actions">
+                                <button class="btn btn-small" onclick="openAddProductModal('${cat}')">
+                                    <i class="fas fa-plus"></i> Agregar
+                                </button>
+                            </div>
+                            <div class="admin-products-list">
+                                ${items.map(item => `
+                                    <div class="admin-product-item">
+                                        <img src="${item.image}" alt="${item.name}">
+                                        <div class="admin-product-info">
+                                            <strong>${item.name}</strong>
+                                            <span>$${item.price.toFixed(2)}</span>
+                                        </div>
+                                        <div class="admin-product-actions">
+                                            <button class="btn-edit" onclick="editProduct('${cat}', ${item.id})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn-delete" onclick="deleteProduct('${cat}', ${item.id})">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+
+                app.innerHTML = html;
+                this.updateNav('admin');
+            }
+
+            updateNav(hash) {
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('data-route') === hash || 
+                        (hash.startsWith(link.getAttribute('data-route')) && link.getAttribute('data-route') !== 'home')) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+
+            setupEventListeners() {
+                document.querySelectorAll('.btn-add').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        this.classList.add('added');
+                        const icon = this.querySelector('i');
+                        icon.classList.remove('fa-plus');
+                        icon.classList.add('fa-check');
+                        setTimeout(() => {
+                            this.classList.remove('added');
+                            icon.classList.remove('fa-check');
+                            icon.classList.add('fa-plus');
+                        }, 1500);
+                    });
+                });
+            }
+        }
+
+        // Función para actualizar el footer según el estado de login
+        function updateFooter() {
+            const footerLinks = document.getElementById('footerAdminLinks');
+            if (isAdminLoggedIn) {
+                footerLinks.innerHTML = `
+                    <a href="#admin" class="admin-link">🔧 Panel de Admin</a>
+                    <button class="admin-link" onclick="logoutAdmin()" style="background: none; border: none; color: var(--gray); text-decoration: underline; cursor: pointer; margin-left: 1rem;">
+                        🚪 Cerrar Sesión
+                    </button>
+                `;
+            } else {
+                footerLinks.innerHTML = '<a href="#admin" class="admin-link">🔧 Panel de Admin</a>';
+            }
+        }
+
+        // Inicializar router
+        const router = new Router(menuData);
+
+        // Actualizar footer al cargar la página
+        updateFooter();
+
+        // Toggle menú móvil
+        document.getElementById('menuToggle').addEventListener('click', function() {
+            document.getElementById('mainNav').classList.toggle('active');
+            this.querySelector('i').classList.toggle('fa-bars');
+            this.querySelector('i').classList.toggle('fa-times');
+        });
+
+        // Cerrar menú al hacer click en un enlace
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('mainNav').classList.remove('active');
+                document.querySelector('.menu-toggle i').classList.add('fa-bars');
+                document.querySelector('.menu-toggle i').classList.remove('fa-times');
+            });
+        });
+
+        // === FUNCIONES DEL ADMIN ===
+
+        // Mostrar modal de login
+        function showLoginModal() {
+            document.getElementById('adminLoginModal').style.display = 'block';
+        }
+
+        // Cerrar modal de login
+        document.getElementById('closeLoginModal').addEventListener('click', function() {
+            document.getElementById('adminLoginModal').style.display = 'none';
+        });
+
+        // Login de admin
+        document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('adminUsername').value;
+            const password = document.getElementById('adminPassword').value;
+            const errorMsg = document.getElementById('loginError');
+
+            if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+                isAdminLoggedIn = true;
+                localStorage.setItem('isAdminLoggedIn', 'true');
+                document.getElementById('adminLoginModal').style.display = 'none';
+                document.getElementById('adminLoginForm').reset();
+                errorMsg.textContent = '';
+                window.location.hash = 'admin';
+            } else {
+                errorMsg.textContent = 'Usuario o contraseña incorrectos';
+            }
+        });
+
+        // Cerrar sesión
+        function logoutAdmin() {
+            isAdminLoggedIn = false;
+            localStorage.setItem('isAdminLoggedIn', 'false');
+            window.location.hash = 'home';
+        }
+
+        // Restablecer datos originales
+        function resetMenuData() {
+            if (confirm('¿Estás seguro de restablecer todos los datos del menú? Esto eliminará todos los cambios realizados.')) {
+                menuData = JSON.parse(JSON.stringify(defaultMenuData));
+                saveMenuData();
+                window.location.reload();
+            }
+        }
+
+        // === FUNCIONES DE PRODUCTOS ===
+
+        // Abrir modal para agregar producto
+        function openAddProductModal(category) {
+            document.getElementById('productModalTitle').textContent = 'Agregar Producto';
+            document.getElementById('productForm').reset();
+            document.getElementById('productId').value = '';
+            document.getElementById('productCategory').value = category;
+            document.getElementById('productModal').style.display = 'block';
+        }
+
+        // Cerrar modal de producto
+        document.getElementById('closeProductModal').addEventListener('click', function() {
+            document.getElementById('productModal').style.display = 'none';
+        });
+
+        // Editar producto
+        function editProduct(category, productId) {
+            const item = menuData[category].items.find(p => p.id === productId);
+            if (!item) return;
+
+            document.getElementById('productModalTitle').textContent = 'Editar Producto';
+            document.getElementById('productId').value = item.id;
+            document.getElementById('productCategory').value = category;
+            document.getElementById('productName').value = item.name;
+            document.getElementById('productDescription').value = item.description;
+            document.getElementById('productPrice').value = item.price;
+            document.getElementById('productImage').value = item.image;
+            document.getElementById('productBadge').value = item.badge || '';
+            document.getElementById('productModal').style.display = 'block';
+        }
+
+// Eliminar producto
+        function deleteProduct(category, productId) {
+            if (confirm('¿Estás seguro de eliminar este producto?')) {
+                menuData[category].items = menuData[category].items.filter(p => p.id !== productId);
+                saveMenuData();
+                window.location.reload();
+            }
+        }
+
+// Función para convertir archivo a base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // Guardar producto (agregar o editar)
+        document.getElementById('productForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const productId = document.getElementById('productId').value;
+            const category = document.getElementById('productCategory').value;
+            const name = document.getElementById('productName').value;
+            const description = document.getElementById('productDescription').value;
+            const price = parseFloat(document.getElementById('productPrice').value);
+            const imageUrl = document.getElementById('productImage').value;
+            const imageFile = document.getElementById('productImageFile').files[0];
+            const badge = document.getElementById('productBadge').value;
+
+            let image = imageUrl;
+
+            // Si se subió un archivo, convertir a base64
+            if (imageFile) {
+                try {
+                    image = await fileToBase64(imageFile);
+                } catch (error) {
+                    alert('Error al procesar la imagen. Por favor intenta con una URL.');
+                    return;
+                }
+            }
+
+            // Verificar que tenga al menos una imagen
+            if (!image) {
+                alert('Por favor proporciona una URL de imagen o sube una imagen desde tu computadora.');
+                return;
+            }
+
+            if (productId) {
+                // Editar producto existente
+                const itemIndex = menuData[category].items.findIndex(p => p.id === parseInt(productId));
+                if (itemIndex !== -1) {
+                    menuData[category].items[itemIndex] = {
+                        ...menuData[category].items[itemIndex],
+                        name,
+                        description,
+                        price,
+                        image,
+                        badge: badge || null
+                    };
+                }
+            } else {
+                // Agregar nuevo producto
+                const newId = Math.max(...menuData[category].items.map(p => p.id), 0) + 1;
+                menuData[category].items.push({
+                    id: newId,
+                    name,
+                    description,
+                    price,
+                    image,
+                    badge: badge || null
+                });
+            }
+
+            saveMenuData();
+            document.getElementById('productModal').style.display = 'none';
+            document.getElementById('productForm').reset();
+            window.location.reload();
+        });
+
+        // Cerrar modales al hacer click fuera
+        window.addEventListener('click', function(e) {
+            if (e.target === document.getElementById('adminLoginModal')) {
+                document.getElementById('adminLoginModal').style.display = 'none';
+            }
+            if (e.target === document.getElementById('productModal')) {
+                document.getElementById('productModal').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
